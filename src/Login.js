@@ -1,8 +1,8 @@
 import './App.css';
 import farmaciaLogo from './img/farmacia.png'; // Importa la imagen
-import image1 from './img/image1.png';
-import image2 from './img/image2.png';
-import farmacia3 from './img/farmacia3.jpg';
+import image1 from './img/farmacia3.jpg';
+import image2 from './img/farmacia2.jpg';
+import farmacia3 from './img/farmacia4.jpg';
 import React, { useState, useEffect } from 'react';
 import axios from 'axios'; // Importar axios
 import { ToastContainer, toast } from 'react-toastify';
