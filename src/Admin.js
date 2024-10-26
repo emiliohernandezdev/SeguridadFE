@@ -4,6 +4,7 @@ import React, { useState, useEffect } from 'react';
 import { ToastContainer, toast } from 'react-toastify';
 import 'react-toastify/dist/ReactToastify.css';
 import axios from 'axios';
+
 function Admin() {
   const [users, setUsers] = useState([]);
   const [userCredits, setUserCredits] = useState([]);
@@ -11,7 +12,7 @@ function Admin() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
 
-  // Función para obtener usuarios desde el API
+  // Obtener usuarios
   const fetchUsers = async () => {
     try {
       const response = await axios.get('http://localhost:3000/api/v1/auth/users', {
@@ -19,8 +20,7 @@ function Admin() {
           'Authorization': `Bearer ${localStorage.getItem('farmaciaToken')}`,
         },
       });
-      const data = await response.data;
-      setUsers(data['data']); // Ajusta la estructura según tu API
+      setUsers(response.data['data']);
     } catch (error) {
       setError(error.response?.data?.message || 'Error al obtener los usuarios');
       toast.error(error.response?.data?.message || 'Error al obtener los usuarios');
@@ -28,8 +28,8 @@ function Admin() {
       setLoading(false);
     }
   };
-  
-  // Función para obtener créditos
+
+  // Obtener créditos
   const fetchCredits = async () => {
     try {
       const response = await axios.get('http://localhost:3000/api/v1/credit/users', {
@@ -37,10 +37,7 @@ function Admin() {
           'Authorization': `Bearer ${localStorage.getItem('farmaciaToken')}`,
         },
       });
-
-      const data = await response.data;
-      setUserCredits(data['users']); // Ajusta la estructura según tu API
-      console.log(userCredits)
+      setUserCredits(response.data['users']);
     } catch (error) {
       setError(error.response?.data?.message || 'Error al obtener los créditos');
       toast.error(error.response?.data?.message || 'Error al obtener los créditos');
@@ -49,20 +46,82 @@ function Admin() {
     }
   };
 
-  // Función para agregar un nuevo usuario
+  // Actualizar crédito
+  const handleEditUser = async (id, updatedCredit) => {
+    try {
+      const response = await axios.patch(`http://localhost:3000/api/v1/credit/update`, {
+        id: id,
+        limit: updatedCredit.limit,
+        available: updatedCredit.available
+      }, {
+        headers: {
+          'Authorization': `Bearer ${localStorage.getItem('farmaciaToken')}`,
+        }
+      });
+
+      const data = await response.data;
+
+      if (data['success'] === false) {
+        toast.error(data['message']);
+        return;
+      } else {
+        toast.success(data['message']);
+        fetchCredits();
+      }
+    } catch (error) {
+      toast.error(error.response?.data?.message || 'Error al actualizar el crédito');
+    }
+  };
+
+
+  const handleCreditDelete = async (creditId) => {
+    try {
+      const response = await axios.delete(`http://localhost:3000/api/v1/credit/delete/${creditId._id}`,  {
+        headers: {
+          'Authorization': `Bearer ${localStorage.getItem('farmaciaToken')}`,
+          'Content-Type': 'application/json',
+        }
+      });
+      const data = await response.data;
+      if (data['success'] === false) {
+        toast.error(data['message']);
+      } else {
+        toast.success(data['message']);
+        fetchCredits();
+      }
+    } catch (error) {
+      toast.error(error.response?.data?.message || 'Error al eliminar el crédito');
+    }
+  }
+
+  // Cambiar el valor del crédito
+  const handleInputChange = (creditId, field, value) => {
+    const updatedUserCredits = userCredits.map(credit =>
+      credit._id === creditId ? { ...credit, [field]: value } : credit
+    );
+    setUserCredits(updatedUserCredits);
+  };
+
+  const handleSaveClick = (userCredit) => {
+    handleEditUser(userCredit._id, {
+      limit: userCredit.limit,
+      available: userCredit.available
+    });
+  };
+
+  // Agregar un nuevo crédito
   const handleAddUser = async () => {
     if (newUser.user && newUser.limit && newUser.available) {
       try {
         const response = await axios.post('http://localhost:3000/api/v1/credit/add', newUser);
-        
         const data = await response.data;
-        if(data['success'] === false) {
+        if (data['success'] === false) {
           toast.error(data['message']);
-        }else{
+        } else {
           toast.success(data['message']);
           setNewUser({ user: '', limit: '', available: '' });
           fetchCredits();
-        }    
+        }
       } catch (error) {
         toast.error(error.response?.data?.message || 'Error al agregar el usuario');
       }
@@ -70,48 +129,6 @@ function Admin() {
       toast.error('Por favor completa todos los campos');
     }
   };
-
-  // Función para editar un usuario
-  const handleEditUser = async (id, field, value) => {
-    // Encontrar el objeto de crédito con el usuario correspondiente y obtener el valor actual (before)
-    const updatedUserCredits = userCredits.map((credit) => 
-      credit.user._id === id ? { ...credit, [field]: value } : credit
-    );
-  
-    const selectedCredit = userCredits.find(credit => credit.user._id === id);
-
-    console.log(selectedCredit)
-    const beforeValue = selectedCredit ? selectedCredit[field] : null;
-    const afterValue = value;
-  
-    try {
-      // Realizar el PATCH con axios y enviar solo el ID y los valores `before` y `after`
-      const response = await axios.patch(
-        'http://localhost:3000/api/v1/credit/update',
-        {
-          id: id,
-          limit: beforeValue, // valor actual antes de la actualización
-          available: afterValue     // nuevo valor que se desea establecer
-        },
-        {
-          headers: {
-            'Content-Type': 'application/json',
-          }
-        }
-      );
-  
-      if (response.status !== 200) {
-        throw new Error('Error al actualizar el crédito');
-      }
-  
-      // Actualizar el estado de userCredits con los nuevos valores tras el éxito del request
-      setUserCredits(updatedUserCredits);
-      toast.success('Crédito actualizado exitosamente');
-    } catch (error) {
-      toast.error(error.response?.data?.message || 'Error al actualizar el crédito');
-    }
-  };
-  
 
   useEffect(() => {
     fetchUsers();
@@ -161,34 +178,36 @@ function Admin() {
               </tr>
             </thead>
             <tbody>
-
-              {userCredits && userCredits.map(user => (
-                <tr key={user.user._id}>
+              {userCredits && userCredits.map(userCredit => (
+                <tr key={userCredit._id}>
                   <td>
                     <input
                       type="text"
                       readOnly
+                      className="input-field"
                       disabled
-                      value={user.user.email}
-                      onChange={(e) => handleEditUser(user.user._id, 'user', e.target.value)}
+                      value={userCredit.user.email}
                     />
                   </td>
                   <td>
                     <input
                       type="number"
-                      value={user.limit.toFixed(2)}
-                      onChange={(e) => handleEditUser(user.user._id, 'creditLimit', parseFloat(e.target.value).toFixed(2))}
+                      className="input-field"
+                      value={userCredit.limit.toFixed(2)}
+                      onChange={(e) => handleInputChange(userCredit._id, 'limit', parseFloat(e.target.value))}
                     />
                   </td>
                   <td>
                     <input
                       type="number"
-                      value={user.available.toFixed(2)}
-                      onChange={(e) => handleEditUser(user.user._id, 'availableBalance', parseFloat(e.target.value).toFixed(2))}
+                      className="input-field"
+                      value={userCredit.available.toFixed(2)}
+                      onChange={(e) => handleInputChange(userCredit._id, 'available', parseFloat(e.target.value))}
                     />
                   </td>
                   <td>
-                    <button onClick={() => handleEditUser(user.user._id)}>Guardar</button>
+                    <button onClick={() => handleSaveClick(userCredit)} >Guardar</button>
+                    <button onClick={() => handleCreditDelete(userCredit)} >Eliminar</button>
                   </td>
                 </tr>
               ))}
@@ -221,7 +240,7 @@ function Admin() {
               value={newUser.available}
               onChange={(e) => setNewUser({ ...newUser, available: parseFloat(e.target.value).toFixed(2) })}
             />
-            <button onClick={handleAddUser}>Agregar credito</button>
+            <button onClick={handleAddUser}>Agregar crédito</button>
           </div>
         </div>
       </div>

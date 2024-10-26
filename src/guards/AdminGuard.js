@@ -31,10 +31,8 @@ const AdminGuard = ({ children }) => {
         const data = await response.json();
         if (data['success'] == true) {
           if (data['data']['name'] == 'admin') {
-            console.log('si es admin')
             setIsAdmin(true);
           } else {
-            console.log('no es admin')
             setIsAdmin(false);
           }
         }
@@ -50,7 +48,7 @@ const AdminGuard = ({ children }) => {
 
   // Manejo de estado de carga y error
   if (isLoading) {
-    return <div>Cargando...</div>; // O un componente de carga
+    return <div>Validando...</div>; // O un componente de carga
   }
 
   if (error) {

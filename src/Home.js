@@ -6,6 +6,8 @@ import farmacia3 from './img/farmacia3.jpg';
 import React, { useState, useEffect } from 'react';
 import { toast, ToastContainer } from 'react-toastify';
 import 'react-toastify/dist/ReactToastify.css';
+import JsonView from 'react18-json-view'
+import 'react18-json-view/src/style.css'
 
 function Home() {
   const [activeInput, setActiveInput] = useState(null);
@@ -14,6 +16,7 @@ function Home() {
   const [creditLimit, setCreditLimit] = useState(0.00);
   const [availableBalance, setAvailableBalance] = useState(0.00);
   const [userData, setUserData] = useState(null);
+  const [transactionData, setTransactionData] = useState(null);
 
   // Manejadores de eventos para inputs
   const handleFocus = (index) => {
@@ -42,35 +45,36 @@ function Home() {
     }
   }, [currentImage]);
 
+  const fetchData = async () => {
+    try {
+      const response = await fetch('http://localhost:3000/api/v1/credit/my', {
+        headers: {
+          'Authorization': `Bearer ${localStorage.getItem('farmaciaToken')}`
+        }
+      });
+
+      if (!response.ok) {
+        toast.error(`Error: ${response.statusText}`);
+        return; // Salir de la función si hay un error
+      }
+
+      const data = await response.json();
+      if (data['success'] === false) {
+        toast.warning(`Aviso: ${data['message']}`);
+        return; // Salir de la función si hay un error
+      } else {
+        toast.success('Credito obtenido con exito!');
+      }
+
+      setCreditLimit(data.credit);
+      setAvailableBalance(data.remaining);
+    } catch (error) {
+      console.log(error);
+    }
+  };
+
   // Fetch data desde la API
   useEffect(() => {
-    const fetchData = async () => {
-      try {
-        const response = await fetch('http://localhost:3000/api/v1/credit/my', {
-          headers: {
-            'Authorization': `Bearer ${localStorage.getItem('farmaciaToken')}`
-          }
-        });
-        
-        if (!response.ok) {
-          toast.error(`Error: ${response.statusText}`);
-          return; // Salir de la función si hay un error
-        }
-
-        const data = await response.json();
-        if (data['success'] === false) {
-          toast.warning(`Aviso: ${data['message']}`);
-          return; // Salir de la función si hay un error
-        }else{
-          toast.success('Credito obtenido con exito!');
-        }
-        
-        setCreditLimit(data.credit); 
-        setAvailableBalance(data.remaining);
-      } catch (error) {
-        console.log(error);
-      }
-    };
     fetchData();
   }, []);
 
@@ -82,7 +86,7 @@ function Home() {
             'Authorization': `Bearer ${localStorage.getItem('farmaciaToken')}`
           }
         });
-        
+
         if (!response.ok) {
           toast.error(`Error: ${response.statusText}`);
           return; // Salir de la función si hay un error
@@ -92,7 +96,7 @@ function Home() {
         if (data['success'] === false) {
           toast.error(`Aviso: ${data['message']}`);
           return; // Salir de la función si hay un error
-        }else{
+        } else {
           setUserData(data.user);
         }
 
@@ -102,6 +106,31 @@ function Home() {
     };
     fetchUserData();
   }, []);
+
+  const generateTrx = async () => {
+    try {
+      const response = await fetch('http://localhost:3000/api/v1/credit/generateTrx', {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${localStorage.getItem('farmaciaToken')}`
+        }
+      });
+
+      const data = await response.json();
+      if (data['success'] === false) {
+        toast.error(data['message']);
+      } else {
+        toast.success(data['message']);
+
+        if (data['data']) {
+          setTransactionData(data['data']);  // Guardar el JSON en el estado
+          fetchData();
+        }
+      }
+    } catch (err) {
+      console.log(err);
+    }
+  };
 
   return (
     <main className={isFinancialMode ? "financial-mode" : ""}>
@@ -141,6 +170,18 @@ function Home() {
                     <h3>Saldo Disponible</h3>
                     <p>Q {availableBalance.toFixed(2)}</p>
                   </div>
+                  <div className="info-item">
+                    <h3>Generar compra</h3>
+                    <button className="sign-btn" onClick={generateTrx}>Generar transacción</button>
+
+                    {/* Asegura que JsonView tenga un contenedor responsivo */}
+                    {transactionData && (
+                      <div className="json-view">
+                        <JsonView src={transactionData} />
+                      </div>
+                    )}
+                  </div>
+
                 </div>
               </section>
             ) : (
