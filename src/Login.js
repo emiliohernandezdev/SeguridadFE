@@ -7,7 +7,7 @@ import React, { useState, useEffect } from 'react';
 import axios from 'axios'; // Importar axios
 import { ToastContainer, toast } from 'react-toastify';
 import 'react-toastify/dist/ReactToastify.css';
-import { useNavigate } from 'react-router-dom'; 
+import { useNavigate } from 'react-router-dom';
 
 function Login() {
   const [activeInput, setActiveInput] = useState(null);
@@ -20,7 +20,7 @@ function Login() {
   const [token, setToken] = useState('');
 
   const [loginDisabled, setLoginDisabled] = useState(false);
-  const navigate = useNavigate(); 
+  const navigate = useNavigate();
 
   // Manejadores de eventos para inputs
   const handleFocus = (index) => {
@@ -85,14 +85,21 @@ function Login() {
     try {
       const response = await axios.post('http://localhost:3000/api/v1/auth/login', loginData);
       const data = await response.data;
-      if (response.data['success'] == true) {
-        setTokenVisible(true);
-        setLoginDisabled(true);
-        toast.success(data['message'] ?? 'Token generado con exito');
-        setLoginData({
-          dpi: '',
-          password: '',
-        });
+      if (data['success'] == true) {
+        if (data['role'].name == 'admin') {
+          localStorage.setItem('farmaciaToken', data['data']);
+          toast.success('Sesion iniciada de admin')
+          navigate('/admin');
+        } else {
+          setTokenVisible(true);
+          setLoginDisabled(true);
+          toast.success(data['message'] ?? 'Token generado con exito');
+          setLoginData({
+            dpi: '',
+            password: '',
+          });
+        }
+
       } else {
         toast.error(`Error: ${data['message']}`);
       }
@@ -117,7 +124,7 @@ function Login() {
   const handleTokenSubmit = async (e) => {
     e.preventDefault();
     try {
-      const response = await axios.post('http://localhost:3000/api/v1/auth/validate', { token: token});
+      const response = await axios.post('http://localhost:3000/api/v1/auth/validate', { token: token });
       const data = await response.data;
       if (response.data['success'] == true) {
         setTokenVisible(false);
@@ -128,7 +135,7 @@ function Login() {
         });
         localStorage.setItem('farmaciaToken', data['data'])
         setTimeout(() => {
-            navigate('/home');
+          navigate('/home');
         }, 2500);
       } else {
         toast.error(`Error: ${data['message']}`);
